@@ -8,6 +8,7 @@
 /* A hosszú verssor is férjen el; kis kijelzőn maradjon görgethető. */
 .meter{gap:0;scrollbar-width:thin}.syllable{min-width:0;flex:1 1 0;gap:7px}.mark{min-width:0;width:clamp(31px,3.4vw,44px);height:42px;font-size:22px}.textpiece{font-size:clamp(15px,1.65vw,23px);letter-spacing:0}.divider{min-width:12px;width:15px;flex:0 0 15px;padding:0 1px;margin:0;font-size:21px}.foot{font-family:system-ui,sans-serif}
 @media(max-width:760px){.meter{overflow-x:auto}.syllable{min-width:48px;flex:0 0 48px}.divider{flex:0 0 15px}.textpiece{font-size:18px}}
+.mark.correct,.divider.correct{background:#e0f5e8;border-color:#2c9c5a;color:#126438}.mark.incorrect,.divider.incorrect{background:#fff0eb;border-color:#d65b4b;color:#9d3025}.correction{font-size:12px;min-height:18px;color:#a02a28;font-weight:700}.syllable{position:relative}.divider{border:2px solid transparent;border-radius:8px}.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.9rem;margin-top:14px}.legend span{padding:5px 9px;border-radius:7px}.goodkey{background:#e0f5e8;color:#126438}.wrongkey{background:#fff0eb;color:#9d3025}.foot.correct{background:#e0f5e8;border-color:#73bd91}.foot.incorrect{background:#fff0eb;border-color:#dc8b80}.foot-reference{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px;margin:15px 0}.reference-card{border:1px solid #cbd9ec;border-radius:12px;padding:13px;background:#f4f8ff}.reference-card strong{display:block}.reference-card .pattern{font-size:1.65rem;letter-spacing:.2em;color:#1558a3;white-space:nowrap}.reference-card small{color:#65738b}details.reference{background:white;padding:17px;border-radius:14px;margin-bottom:18px}details.reference summary{cursor:pointer;font-weight:700;color:#17447e}
 </style>
 </head>
 <body>
@@ -21,10 +22,12 @@
 <div class="notice small">1. Kattints a szótag fölötti gombra: <strong>üres → ∪ (rövid) → — (hosszú) → üres</strong>. 2. Kattints a szótagok közötti <strong>·</strong> jelre, ahol új versláb kezdődik. A verssor szótagjai szándékosan el vannak választva.</div>
 <div id="meter" class="meter" aria-label="Szótagok és verslábhatárok"></div>
 <div id="footPreview" class="feet" aria-live="polite"></div>
+<div id="correctionLegend" class="legend hidden"><span class="goodkey">✓ Helyes jelölés / határ</span><span class="wrongkey">✕ Javítandó jelölés / határ</span><span>Az elhibázott helyeken a helyes jelet is megmutatjuk.</span></div>
 <div class="actions"><button id="check">Ellenőrzöm</button><button id="solution" class="secondary">Megoldás megmutatása</button><button id="clear" class="ghost">Jelölések törlése</button></div>
 <div id="feedback" class="feedback hidden" aria-live="polite"></div>
 <div class="actions row spaced"><button id="prev" class="secondary">← Előző</button><button id="next">Következő →</button></div>
 </section>
+<details class="reference"><summary>Verslábak képes-ritmikus emlékeztetője – megnyitás</summary><p class="muted small">A hat tanult versláb és a megjegyzést segítő nevek. Ezek saját, szöveges ábrák; a korábbi grafikák később is beilleszthetők.</p><div id="referenceCards" class="foot-reference"></div></details>
 <section id="teacher" class="panel hidden">
 <h2>Tanári műhely</h2>
 <p class="muted">Itt a megoldókulcs teljesen szerkeszthető. A feladatok és a kulcs helyben, ebben a böngészőben tárolódnak. Az exportált JSON-fájllal másik gépre is átvihetők.</p>
@@ -63,14 +66,35 @@ const answer=()=>{if(!answers[current]||answers[current].marks.length!==item().m
 const footNames={'∪—':'jambus','—∪':'trocheus','—∪∪':'daktilus','∪∪—':'anapesztus','——':'spondeus','∪∪':'pirrichius'};
 const footName=pat=>footNames[pat]||'félsorzáró részlet';
 const quizItems=Object.entries(footNames), mnemonics={jambus:'Jolán',trocheus:'Tódor',daktilus:'Dániel',anapesztus:'Aladár',spondeus:'sárkány',pirrichius:'Piri'};
+quizItems.forEach(([pattern,name])=>{const card=document.createElement('div');card.className='reference-card';const title=document.createElement('strong');title.textContent=name;const rhythm=document.createElement('div');rhythm.className='pattern';rhythm.textContent=pattern.split('').join(' ');const hint=document.createElement('small');hint.textContent=mnemonics[name];card.append(title,rhythm,hint);$('referenceCards').append(card)});
 let quizIndex=0,quizDone=false,quizTotal=0,quizCorrect=0;
 function showQuiz(){quizDone=false;const [pattern]=quizItems[quizIndex];$('quizPattern').textContent='Melyik versláb?   '+pattern.split('').join('  ');$('quizFeedback').classList.add('hidden');$('quizChoices').replaceChildren();const names=quizItems.map(x=>x[1]);names.forEach(name=>{const b=document.createElement('button');b.className='secondary';b.textContent=name;b.onclick=()=>{if(quizDone)return;quizDone=true;quizTotal++;const right=name===footNames[pattern];if(right)quizCorrect++;$('quizFeedback').classList.remove('hidden');$('quizFeedback').textContent=(right?'Helyes! ':'Most nem sikerült. ')+pattern+' = '+footNames[pattern]+' (emlékeztető: '+mnemonics[footNames[pattern]]+').';$('quizScore').textContent='Eredmény: '+quizCorrect+' / '+quizTotal;b.className=right?'':'ghost';};$('quizChoices').append(b)});}
 $('quizNext').onclick=()=>{quizIndex=(quizIndex+1)%quizItems.length;showQuiz()};$('quizReset').onclick=()=>{quizCorrect=quizTotal=0;$('quizScore').textContent='Eredmény: 0 / 0';showQuiz()};
 $('feetTab').onclick=()=>{ $('feetPractice').classList.remove('hidden');$('practice').classList.add('hidden');$('teacher').classList.add('hidden');$('feetTab').classList.add('active');$('practiceTab').classList.remove('active');showQuiz();};
-function preview(){const a=answer(),groups=[],cuts=[...a.breaks,item().marks.length].sort((x,y)=>x-y);let start=0;for(const stop of cuts){const pat=a.marks.slice(start,stop).map(x=>x||'?').join('');groups.push(pat);start=stop;}
- $('footPreview').replaceChildren();groups.forEach((pat,i)=>{const b=document.createElement('span');b.className='foot';b.textContent=(i+1)+'. '+pat.split('').join(' ')+' · '+(pat.includes('?')?'még jelölendő':footName(pat));$('footPreview').append(b)});}
+function preview(){const a=showSolution?{marks:item().marks,breaks:item().breaks}:answer(),groups=[],cuts=[...a.breaks,item().marks.length].sort((x,y)=>x-y),correctCuts=[...item().breaks,item().marks.length].sort((x,y)=>x-y);let start=0;for(const stop of cuts){const pat=a.marks.slice(start,stop).map(x=>x||'?').join('');groups.push({pat,start,stop});start=stop;}
+ $('footPreview').replaceChildren();groups.forEach(({pat,start,stop},i)=>{const b=document.createElement('span');b.className='foot';if(checked){const matches=correctCuts.includes(stop)&&(start===0||item().breaks.includes(start))&&a.marks.slice(start,stop).every((x,j)=>x===item().marks[start+j]);b.classList.add(matches?'correct':'incorrect');}b.textContent=(i+1)+'. '+pat.split('').join(' ')+' · '+(pat.includes('?')?'még jelölendő':footName(pat));$('footPreview').append(b)});}
 function render(){const it=item(),a=answer();$('exerciseTitle').textContent=it.title;$('progress').textContent=(current+1)+' / '+items.length;$('instruction').textContent=it.prompt;$('meter').replaceChildren();
- it.syllables.forEach((s,i)=>{const group=document.createElement('div');group.className='syllable';const mark=document.createElement('button');mark.className='mark';mark.textContent=showSolution?it.marks[i]:(a.marks[i]||'·');mark.setAttribute('aria-label',(i+1)+'. szótag: '+(a.marks[i]||'nincs jelölés'));mark.disabled=showSolution;mark.onclick=()=>{a.marks[i]=a.marks[i]===''?'∪':a.marks[i]==='∪'?'—':'';checked=false;$('feedback').classList.add('hidden');persist();render()};const part=document.createElement('div');part.className='textpiece';part.textContent=s;group.append(mark,part);$('meter').append(group);if(i<it.syllables.length-1){const boundary=document.createElement('button');boundary.className='divider '+((showSolution?it.breaks:a.breaks).includes(i+1)?'cut':'');boundary.textContent=(showSolution?it.breaks:a.breaks).includes(i+1)?'│':'·';boundary.disabled=showSolution;boundary.setAttribute('aria-label',(i+1)+'. szótag utáni verslábhatár');boundary.onclick=()=>{a.breaks=a.breaks.includes(i+1)?a.breaks.filter(v=>v!==i+1):[...a.breaks,i+1];checked=false;$('feedback').classList.add('hidden');persist();render()};$('meter').append(boundary)}});
+ it.syllables.forEach((s,i)=>{
+  const group=document.createElement('div');group.className='syllable';
+  const mark=document.createElement('button');mark.className='mark';mark.textContent=showSolution?it.marks[i]:(a.marks[i]||'·');
+  if(checked)mark.classList.add(a.marks[i]===it.marks[i]?'correct':'incorrect');
+  mark.setAttribute('aria-label',(i+1)+'. szótag: '+(a.marks[i]||'nincs jelölés'));mark.disabled=showSolution;
+  mark.onclick=()=>{a.marks[i]=a.marks[i]===''?'∪':a.marks[i]==='∪'?'—':'';checked=false;persist();render()};
+  const part=document.createElement('div');part.className='textpiece';part.textContent=s;group.append(mark,part);
+  if(checked&&a.marks[i]!==it.marks[i]){const correction=document.createElement('span');correction.className='correction';correction.textContent='Helyes: '+it.marks[i];group.append(correction)}
+  $('meter').append(group);
+  if(i<it.syllables.length-1){
+   const boundary=document.createElement('button'),userCut=a.breaks.includes(i+1),rightCut=it.breaks.includes(i+1);
+   boundary.className='divider '+((showSolution?rightCut:userCut)?'cut':'');
+   if(checked&&(userCut||rightCut))boundary.classList.add(userCut===rightCut?'correct':'incorrect');
+   boundary.textContent=(showSolution?rightCut:(checked&&rightCut?true:userCut))?'│':'·';boundary.disabled=showSolution;
+   boundary.setAttribute('aria-label',(i+1)+'. szótag utáni verslábhatár'+(checked?(rightCut?' – itt kell határ':' – itt nincs határ'):''));
+   boundary.title=checked?(rightCut?'Helyes: itt van verslábhatár':'Helyes: itt nincs verslábhatár'):'';
+   boundary.onclick=()=>{a.breaks=userCut?a.breaks.filter(v=>v!==i+1):[...a.breaks,i+1];checked=false;persist();render()};
+   $('meter').append(boundary);
+  }
+ });
+ $('correctionLegend').classList.toggle('hidden',!checked);
  $('solution').textContent=showSolution?'Vissza a saját jelöléshez':'Megoldás megmutatása';$('prev').disabled=current===0;$('next').disabled=current===items.length-1;
  if(showSolution){$('feedback').classList.remove('hidden');$('feedback').textContent='Megoldókulcs: '+it.marks.join(' ')+' | Verslábhatárok: '+(it.breaks.join(', ')||'nincs')+'. '+it.note;}else if(checked){const rights=a.marks.filter((x,i)=>x===it.marks[i]).length;const boundaries=Array.from({length:it.marks.length-1},(_,i)=>i+1);const good=boundaries.filter(i=>a.breaks.includes(i)===it.breaks.includes(i)).length;const total=it.marks.length+boundaries.length;$('feedback').classList.remove('hidden');$('feedback').innerHTML='';const p=document.createElement('p');p.textContent='Szótagok: '+rights+'/'+it.marks.length+' · Verslábhatárok: '+good+'/'+boundaries.length+' · Összesen: '+(rights+good)+'/'+total;p.className=rights+good===total?'ok':'bad';$('feedback').append(p);const desc=document.createElement('p');desc.textContent=rights+good===total?'Hibátlan elemzés!':'Javíthatod a jelöléseket, majd újra ellenőrizheted.';$('feedback').append(desc);}else $('feedback').classList.add('hidden');preview();}
 function navigate(delta){current+=delta;checked=false;showSolution=false;persist();render();}
