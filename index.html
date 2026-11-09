@@ -10,11 +10,12 @@
 <body>
 <header><h1>Időmértékes műhely</h1><p>Szótagok · verslábak · felismerés — lépésről lépésre</p></header>
 <main>
-<nav><button id="practiceTab" class="active">Gyakorlás</button><button id="teacherTab" class="secondary">Tanári műhely</button></nav>
+<nav><button id="practiceTab" class="active">Verssorok elemzése</button><button id="feetTab" class="secondary">Verslábak gyakorlása</button><button id="teacherTab" class="secondary hidden">Tanári műhely</button></nav>
+<section id="feetPractice" class="panel hidden"><h2>Ismered a verslábakat?</h2><p class="muted">Nézd meg a jelölést, majd válaszd ki a megfelelő verslábat. Minden válasz után rögtön kapsz visszajelzést.</p><div class="notice" id="quizPattern"></div><div id="quizChoices" class="actions"></div><p id="quizFeedback" class="feedback hidden" aria-live="polite"></p><div class="actions"><button id="quizNext" class="secondary">Új versláb →</button><button id="quizReset" class="ghost">Pontszám nullázása</button></div><p id="quizScore" class="score"></p></section>
 <section id="practice" class="panel">
 <div class="row spaced"><h2 id="exerciseTitle">Gyakorlás</h2><span class="score" id="progress"></span></div>
 <p id="instruction" class="muted"></p>
-<div class="notice small">1. Kattints a szótag fölötti gombra: <strong>üres → ∪ (rövid) → — (hosszú) → üres</strong>. 2. Kattints a szótagok közötti <strong>·</strong> jelre, ahol új versláb kezdődik.</div>
+<div class="notice small">1. Kattints a szótag fölötti gombra: <strong>üres → ∪ (rövid) → — (hosszú) → üres</strong>. 2. Kattints a szótagok közötti <strong>·</strong> jelre, ahol új versláb kezdődik. A verssor szótagjai szándékosan el vannak választva.</div>
 <div id="meter" class="meter" aria-label="Szótagok és verslábhatárok"></div>
 <div id="footPreview" class="feet" aria-live="polite"></div>
 <div class="actions"><button id="check">Ellenőrzöm</button><button id="solution" class="secondary">Megoldás megmutatása</button><button id="clear" class="ghost">Jelölések törlése</button></div>
@@ -42,15 +43,10 @@
 <script>
 (() => {
 'use strict';
-const KEY='idomertekes-v1-items',STATE='idomertekes-v1-progress';
+const KEY='idomertekes-v2-items',STATE='idomertekes-v2-progress';
 const starter=[
-{title:'Daktilus – Dániel',prompt:'Elemezd a Dániel szó ritmusát!',syllables:['DÁ','ni','el'],marks:['—','∪','∪'],breaks:[],note:'A daktilus képlete: — ∪ ∪. Három szótagból áll.'},
-{title:'Spondeus – sárkány',prompt:'Elemezd a sárkány szó ritmusát!',syllables:['SÁR','KÁNY'],marks:['—','—'],breaks:[],note:'A spondeus képlete: — —.'},
-{title:'Jambus – Jolán',prompt:'Elemezd a Jolán név ritmusát!',syllables:['Jo','LÁN'],marks:['∪','—'],breaks:[],note:'A jambus képlete: ∪ —. Emelkedő versláb.'},
-{title:'Trocheus – Tódor',prompt:'Elemezd a Tódor név ritmusát!',syllables:['TÓ','dor'],marks:['—','∪'],breaks:[],note:'A trocheus képlete: — ∪. Ereszkedő versláb.'},
-{title:'Anapesztus – Aladár',prompt:'Elemezd az Aladár név ritmusát!',syllables:['A','la','DÁR'],marks:['∪','∪','—'],breaks:[],note:'Az anapesztus képlete: ∪ ∪ —. Emelkedő versláb.'},
-{title:'Pirrichius – Piri',prompt:'Elemezd a Piri név ritmusát!',syllables:['Pi','ri'],marks:['∪','∪'],breaks:[],note:'A pirrichius képlete: ∪ ∪.'},
-{title:'Verslábak egymás után',prompt:'Jelöld a szótagokat, majd válaszd el a két daktilust és a spondeust!',syllables:['DÁ','ni','el','DÁ','ni','el','SÁR','KÁNY'],marks:['—','∪','∪','—','∪','∪','—','—'],breaks:[3,6],note:'Daktilus | daktilus | spondeus. Ez ritmikai mintasor, nem idézet versből.'}
+{title:'1. sor – hexameter',prompt:'Itt fekszünk, vándor, vidd hírül a spártaiaknak,',syllables:['Itt','fek','szünk,','ván','dor,','vidd','hí','rül','a','spár','ta','i','ak','nak,'],marks:['—','—','—','—','—','—','—','∪','∪','—','∪','∪','—','—'],breaks:[2,4,6,9,12],note:'A sor hat verslábból áll: spondeus | spondeus | spondeus | daktilus | daktilus | spondeus. A szótagolást és a határokat a küldött tanári jelölés alapján rögzítettük.'},
+{title:'2. sor – pentameter',prompt:'megcselekedtük, amit megkövetelt a haza.',syllables:['meg','cse','le','ked','tük,','a','mit','meg','kö','ve','telt','a','ha','za.'],marks:['—','∪','∪','—','∪','∪','—','—','∪','∪','—','∪','∪','∪'],breaks:[3,6,7,10,13],note:'A pentameter két félsora: daktilus | daktilus | záró hosszú szótag || daktilus | daktilus | záró szótag. A félsorhatárt a 7. szótag után jelöltük. A sorzáró szótag közömbös hosszúságú lehet.'}
 ];
 const $=id=>document.getElementById(id);
 const clone=x=>JSON.parse(JSON.stringify(x));
@@ -61,7 +57,13 @@ try{const s=JSON.parse(localStorage.getItem(STATE));if(s&&Number.isInteger(s.cur
 const persist=()=>{try{localStorage.setItem(KEY,JSON.stringify(items));localStorage.setItem(STATE,JSON.stringify({current,answers}));}catch{}};
 const item=()=>items[current];
 const answer=()=>{if(!answers[current]||answers[current].marks.length!==item().marks.length)answers[current]={marks:item().marks.map(()=>''),breaks:[]};return answers[current]};
-const footName=pat=>({'∪—':'jambus','—∪':'trocheus','—∪∪':'daktilus','∪∪—':'anapesztus','——':'spondeus','∪∪':'pirrichius'})[pat]||'egyéb részlet';
+const footNames={'∪—':'jambus','—∪':'trocheus','—∪∪':'daktilus','∪∪—':'anapesztus','——':'spondeus','∪∪':'pirrichius'};
+const footName=pat=>footNames[pat]||'félsorzáró részlet';
+const quizItems=Object.entries(footNames), mnemonics={jambus:'Jolán',trocheus:'Tódor',daktilus:'Dániel',anapesztus:'Aladár',spondeus:'sárkány',pirrichius:'Piri'};
+let quizIndex=0,quizDone=false,quizTotal=0,quizCorrect=0;
+function showQuiz(){quizDone=false;const [pattern]=quizItems[quizIndex];$('quizPattern').textContent='Melyik versláb?   '+pattern.split('').join('  ');$('quizFeedback').classList.add('hidden');$('quizChoices').replaceChildren();const names=quizItems.map(x=>x[1]);names.forEach(name=>{const b=document.createElement('button');b.className='secondary';b.textContent=name;b.onclick=()=>{if(quizDone)return;quizDone=true;quizTotal++;const right=name===footNames[pattern];if(right)quizCorrect++;$('quizFeedback').classList.remove('hidden');$('quizFeedback').textContent=(right?'Helyes! ':'Most nem sikerült. ')+pattern+' = '+footNames[pattern]+' (emlékeztető: '+mnemonics[footNames[pattern]]+').';$('quizScore').textContent='Eredmény: '+quizCorrect+' / '+quizTotal;b.className=right?'':'ghost';};$('quizChoices').append(b)});}
+$('quizNext').onclick=()=>{quizIndex=(quizIndex+1)%quizItems.length;showQuiz()};$('quizReset').onclick=()=>{quizCorrect=quizTotal=0;$('quizScore').textContent='Eredmény: 0 / 0';showQuiz()};
+$('feetTab').onclick=()=>{ $('feetPractice').classList.remove('hidden');$('practice').classList.add('hidden');$('teacher').classList.add('hidden');$('feetTab').classList.add('active');$('practiceTab').classList.remove('active');showQuiz();};
 function preview(){const a=answer(),groups=[],cuts=[...a.breaks,item().marks.length].sort((x,y)=>x-y);let start=0;for(const stop of cuts){const pat=a.marks.slice(start,stop).map(x=>x||'?').join('');groups.push(pat);start=stop;}
  $('footPreview').replaceChildren();groups.forEach((pat,i)=>{const b=document.createElement('span');b.className='foot';b.textContent=(i+1)+'. '+pat+' · '+(pat.includes('?')?'még jelölendő':footName(pat));$('footPreview').append(b)});}
 function render(){const it=item(),a=answer();$('exerciseTitle').textContent=it.title;$('progress').textContent=(current+1)+' / '+items.length;$('instruction').textContent=it.prompt;$('meter').replaceChildren();
@@ -70,7 +72,7 @@ function render(){const it=item(),a=answer();$('exerciseTitle').textContent=it.t
  if(showSolution){$('feedback').classList.remove('hidden');$('feedback').textContent='Megoldókulcs: '+it.marks.join(' ')+' | Verslábhatárok: '+(it.breaks.join(', ')||'nincs')+'. '+it.note;}else if(checked){const rights=a.marks.filter((x,i)=>x===it.marks[i]).length;const boundaries=Array.from({length:it.marks.length-1},(_,i)=>i+1);const good=boundaries.filter(i=>a.breaks.includes(i)===it.breaks.includes(i)).length;const total=it.marks.length+boundaries.length;$('feedback').classList.remove('hidden');$('feedback').innerHTML='';const p=document.createElement('p');p.textContent='Szótagok: '+rights+'/'+it.marks.length+' · Verslábhatárok: '+good+'/'+boundaries.length+' · Összesen: '+(rights+good)+'/'+total;p.className=rights+good===total?'ok':'bad';$('feedback').append(p);const desc=document.createElement('p');desc.textContent=rights+good===total?'Hibátlan elemzés!':'Javíthatod a jelöléseket, majd újra ellenőrizheted.';$('feedback').append(desc);}else $('feedback').classList.add('hidden');preview();}
 function navigate(delta){current+=delta;checked=false;showSolution=false;persist();render();}
 $('check').onclick=()=>{checked=true;showSolution=false;render()};$('solution').onclick=()=>{showSolution=!showSolution;checked=false;render()};$('clear').onclick=()=>{answers[current]={marks:item().marks.map(()=>''),breaks:[]};checked=false;showSolution=false;persist();render()};$('prev').onclick=()=>navigate(-1);$('next').onclick=()=>navigate(1);
-function tab(teacher){$('practice').classList.toggle('hidden',teacher);$('teacher').classList.toggle('hidden',!teacher);$('teacherTab').classList.toggle('active',teacher);$('practiceTab').classList.toggle('active',!teacher);if(teacher)loadEditor();else render();}
+function tab(teacher){$('feetPractice').classList.add('hidden');$('feetTab').classList.remove('active');$('practice').classList.toggle('hidden',teacher);$('teacher').classList.toggle('hidden',!teacher);$('teacherTab').classList.toggle('active',teacher);$('practiceTab').classList.toggle('active',!teacher);if(teacher)loadEditor();else render();}
 $('practiceTab').onclick=()=>tab(false);$('teacherTab').onclick=()=>tab(true);
 function loadEditor(){const ch=$('choose');ch.replaceChildren();items.forEach((it,i)=>{const opt=document.createElement('option');opt.value=i;opt.textContent=(i+1)+'. '+it.title;ch.append(opt)});ch.value=editing;const it=items[editing];$('title').value=it.title;$('prompt').value=it.prompt;$('syllables').value=it.syllables.join(' ');$('pattern').value=it.marks.join(' ');$('breaks').value=it.breaks.join(',');$('note').value=it.note;$('teacherMsg').textContent='';}
 $('choose').onchange=e=>{editing=Number(e.target.value);loadEditor()};
