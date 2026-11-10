@@ -9,6 +9,7 @@
 .meter{gap:0;scrollbar-width:thin}.syllable{min-width:0;flex:1 1 0;gap:7px}.mark{min-width:0;width:clamp(31px,3.4vw,44px);height:42px;font-size:22px}.textpiece{font-size:clamp(15px,1.65vw,23px);letter-spacing:0}.divider{min-width:12px;width:15px;flex:0 0 15px;padding:0 1px;margin:0;font-size:21px}.foot{font-family:system-ui,sans-serif}
 @media(max-width:760px){.meter{overflow-x:auto}.syllable{min-width:48px;flex:0 0 48px}.divider{flex:0 0 15px}.textpiece{font-size:18px}}
 .mark.correct,.divider.correct{background:#e0f5e8;border-color:#2c9c5a;color:#126438}.mark.incorrect,.divider.incorrect{background:#fff0eb;border-color:#d65b4b;color:#9d3025}.correction{font-size:12px;min-height:18px;color:#a02a28;font-weight:700}.syllable{position:relative}.divider{border:2px solid transparent;border-radius:8px}.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.9rem;margin-top:14px}.legend span{padding:5px 9px;border-radius:7px}.goodkey{background:#e0f5e8;color:#126438}.wrongkey{background:#fff0eb;color:#9d3025}.foot.correct{background:#e0f5e8;border-color:#73bd91}.foot.incorrect{background:#fff0eb;border-color:#dc8b80}.foot-reference{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px;margin:15px 0}.reference-card{border:1px solid #cbd9ec;border-radius:12px;padding:13px;background:#f4f8ff}.reference-card strong{display:block}.reference-card .pattern{font-size:1.65rem;letter-spacing:.2em;color:#1558a3;white-space:nowrap}.reference-card small{color:#65738b}details.reference{background:white;padding:17px;border-radius:14px;margin-bottom:18px}details.reference summary{cursor:pointer;font-weight:700;color:#17447e}
+.mark.fixed{background:#fff0c9;border-color:#d69b24;color:#70510c;cursor:default;opacity:1}.fixed-label{font-size:11px;color:#715015;font-weight:750}.special-note{background:#fff9e8;border-left:4px solid #d69b24;padding:10px 13px;border-radius:8px;margin:12px 0}
 </style>
 </head>
 <body>
@@ -20,6 +21,7 @@
 <section id="practice" class="panel">
 <div class="row spaced"><h2 id="exerciseTitle">Gyakorlás</h2><span class="score" id="progress"></span></div>
 <p id="instruction" class="muted"></p>
+<div id="specialNote" class="special-note small hidden">Az <strong>„a” névelő</strong> jelölését most előre megadtuk. A vers ritmusának megfelelően rövidnek tekintjük. Ez különleges verstani eset, amellyel később foglalkozunk. <strong>Nem jár érte pont.</strong></div>
 <div class="notice small">1. Kattints a szótag fölötti gombra: <strong>üres → ∪ (rövid) → — (hosszú) → üres</strong>. 2. Kattints a szótagok közötti <strong>·</strong> jelre, ahol új versláb kezdődik. A verssor szótagjai szándékosan el vannak választva.</div>
 <p class="small muted">Pontot csak az <strong>első ellenőrzés</strong> eredményére kapsz. Ezután szabadon javíthatsz, de a pontod már nem változik. Ha ellenőrzés előtt megnézed a megoldást, arra a sorra 0 pont jár.</p>
 <div id="meter" class="meter" aria-label="Szótagok és verslábhatárok"></div>
@@ -51,13 +53,14 @@
 <script>
 (() => {
 'use strict';
-const KEY='idomertekes-v2-items',STATE='idomertekes-v2-progress';
+const KEY='idomertekes-v3-items',STATE='idomertekes-v2-progress';
 const starter=[
-{title:'1. sor – hexameter',prompt:'Itt fekszünk, vándor, vidd hírül a spártaiaknak,',syllables:['Itt','fek','szünk,','ván','dor,','vidd','hí','rül','a','spár','ta','i','ak','nak,'],marks:['—','—','—','—','—','—','—','∪','∪','—','∪','∪','—','—'],breaks:[2,4,6,9,12],note:'A sor hat verslábból áll: spondeus | spondeus | spondeus | daktilus | daktilus | spondeus. A szótagolást és a határokat a küldött tanári jelölés alapján rögzítettük.'},
+{title:'1. sor – hexameter',prompt:'Itt fekszünk, vándor, vidd hírül a spártaiaknak,',syllables:['Itt','fek','szünk,','ván','dor,','vidd','hí','rül','a','spár','ta','i','ak','nak,'],marks:['—','—','—','—','—','—','—','∪','∪','—','∪','∪','—','—'],fixed:[8],breaks:[2,4,6,9,12],note:'A sor hat verslábból áll: spondeus | spondeus | spondeus | daktilus | daktilus | spondeus. Az „a” névelő ritmikai jelölését előre megadtuk, és nem pontozzuk.'},
 {title:'2. sor – pentameter',prompt:'megcselekedtük, amit megkövetelt a haza.',syllables:['meg','cse','le','ked','tük,','a','mit','meg','kö','ve','telt','a','ha','za.'],marks:['—','∪','∪','—','∪','∪','—','—','∪','∪','—','∪','∪','∪'],breaks:[3,6,7,10,13],note:'A pentameter két félsora: daktilus | daktilus | záró hosszú szótag || daktilus | daktilus | záró szótag. A félsorhatárt a 7. szótag után jelöltük. A sorzáró szótag közömbös hosszúságú lehet.'}
 ];
 const $=id=>document.getElementById(id);
 const clone=x=>JSON.parse(JSON.stringify(x));
+const isFixed=(it,i)=>Array.isArray(it.fixed)&&it.fixed.includes(i);
 const valid=it=>it&&typeof it.title==='string'&&typeof it.prompt==='string'&&Array.isArray(it.syllables)&&it.syllables.length>0&&it.syllables.length<=80&&it.syllables.every(x=>typeof x==='string'&&x.length>0&&x.length<=35)&&Array.isArray(it.marks)&&it.marks.length===it.syllables.length&&it.marks.every(x=>x==='—'||x==='∪')&&Array.isArray(it.breaks)&&it.breaks.every(x=>Number.isInteger(x)&&x>0&&x<it.syllables.length)&&new Set(it.breaks).size===it.breaks.length&&typeof it.note==='string';
 let items=clone(starter);try{const old=JSON.parse(localStorage.getItem(KEY));if(Array.isArray(old)&&old.length&&old.length<=300&&old.every(valid))items=old;}catch{}
 let current=0,answers={},graded={},seenSolution={},checked=false,showSolution=false,editing=0,activeMode='practice';
@@ -67,8 +70,10 @@ try{if(scorm.api)scorm.ready=scorm.api.LMSInitialize('')==='true';}catch{scorm.r
 function scormGet(key){try{return scorm.ready?scorm.api.LMSGetValue(key):'';}catch{return '';}}
 function scormSet(key,value){try{if(scorm.ready)scorm.api.LMSSetValue(key,String(value));}catch{}}
 const boundaryPoints=(it,a)=>{const hits=it.breaks.filter(x=>a.breaks.includes(x)).length,extra=a.breaks.filter(x=>!it.breaks.includes(x)).length;return Math.max(0,hits-extra)};
-const scoreFor=(it,a)=>{if(!a||a.lockedZero||!Array.isArray(a.marks)||!Array.isArray(a.breaks))return 0;const marks=a.marks.filter((x,i)=>x===it.marks[i]).length;return marks+boundaryPoints(it,a);};
-function scoreReport(){const total=items.reduce((s,it)=>s+it.marks.length+it.breaks.length,0),earned=items.reduce((s,it,i)=>s+(graded[i]?scoreFor(it,graded[i]):0),0);return {total,earned,complete:items.every((_,i)=>Boolean(graded[i]))};}
+const countableMarks=it=>it.marks.length-(it.fixed?.length||0);
+const scoredMarks=(it,marks)=>marks.filter((x,i)=>!isFixed(it,i)&&x===it.marks[i]).length;
+const scoreFor=(it,a)=>{if(!a||a.lockedZero||!Array.isArray(a.marks)||!Array.isArray(a.breaks))return 0;return scoredMarks(it,a.marks)+boundaryPoints(it,a);};
+function scoreReport(){const total=items.reduce((s,it)=>s+countableMarks(it)+it.breaks.length,0),earned=items.reduce((s,it,i)=>s+(graded[i]?scoreFor(it,graded[i]):0),0);return {total,earned,complete:items.every((_,i)=>Boolean(graded[i]))};}
 function statePayload(){return {v:1,current,answers,graded,seenSolution,checked,activeMode,quizIndex,quizTotal,quizCorrect};}
 function persist(){const state=JSON.stringify(statePayload());try{localStorage.setItem(KEY,JSON.stringify(items));localStorage.setItem(STATE,state);}catch{}
  if(scorm.ready){const report=scoreReport();scormSet('cmi.suspend_data',state);scormSet('cmi.core.lesson_location',String(current));scormSet('cmi.core.score.min','0');scormSet('cmi.core.score.max',report.total);scormSet('cmi.core.score.raw',report.earned);scormSet('cmi.core.lesson_status',report.complete?'completed':'incomplete');scormSet('cmi.core.exit','suspend');try{scorm.api.LMSCommit('');}catch{}}
@@ -76,7 +81,7 @@ function persist(){const state=JSON.stringify(statePayload());try{localStorage.s
 }
 function restore(){let raw=scorm.ready?scormGet('cmi.suspend_data'):'';if(!scorm.ready)try{raw=localStorage.getItem(STATE)||'';}catch{};try{const s=JSON.parse(raw);if(!s||s.v!==1)return;if(Number.isInteger(s.current))current=Math.max(0,Math.min(items.length-1,s.current));if(s.answers&&typeof s.answers==='object')answers=s.answers;if(s.graded&&typeof s.graded==='object')graded=s.graded;if(s.seenSolution&&typeof s.seenSolution==='object')seenSolution=s.seenSolution;checked=Boolean(s.checked);activeMode=s.activeMode==='feet'?'feet':'practice';if(Number.isInteger(s.quizIndex))quizIndex=Math.max(0,Math.min(5,s.quizIndex));quizTotal=Number.isInteger(s.quizTotal)?s.quizTotal:0;quizCorrect=Number.isInteger(s.quizCorrect)?s.quizCorrect:0;}catch{}}
 const item=()=>items[current];
-const answer=()=>{if(!answers[current]||answers[current].marks.length!==item().marks.length)answers[current]={marks:item().marks.map(()=>''),breaks:[]};return answers[current]};
+const answer=()=>{if(!answers[current]||!Array.isArray(answers[current].marks)||answers[current].marks.length!==item().marks.length)answers[current]={marks:item().marks.map(()=>''),breaks:[]};item().marks.forEach((m,i)=>{if(isFixed(item(),i))answers[current].marks[i]=m});return answers[current]};
 const footNames={'∪—':'jambus','—∪':'trocheus','—∪∪':'daktilus','∪∪—':'anapesztus','——':'spondeus','∪∪':'pirrichius'};
 const footName=pat=>footNames[pat]||'félsorzáró részlet';
 const quizItems=Object.entries(footNames), mnemonics={jambus:'Jolán',trocheus:'Tódor',daktilus:'Dániel',anapesztus:'Aladár',spondeus:'sárkány',pirrichius:'Piri'};
@@ -87,14 +92,14 @@ $('quizNext').onclick=()=>{quizIndex=(quizIndex+1)%quizItems.length;showQuiz();p
 $('feetTab').onclick=()=>{activeMode='feet';$('feetPractice').classList.remove('hidden');$('practice').classList.add('hidden');$('teacher').classList.add('hidden');$('feetTab').classList.add('active');$('practiceTab').classList.remove('active');showQuiz();persist();};
 function preview(){const a=showSolution?{marks:item().marks,breaks:item().breaks}:answer(),groups=[],cuts=[...a.breaks,item().marks.length].sort((x,y)=>x-y),correctCuts=[...item().breaks,item().marks.length].sort((x,y)=>x-y);let start=0;for(const stop of cuts){const pat=a.marks.slice(start,stop).map(x=>x||'?').join('');groups.push({pat,start,stop});start=stop;}
  $('footPreview').replaceChildren();groups.forEach(({pat,start,stop},i)=>{const b=document.createElement('span');b.className='foot';if(checked){const matches=correctCuts.includes(stop)&&(start===0||item().breaks.includes(start))&&a.marks.slice(start,stop).every((x,j)=>x===item().marks[start+j]);b.classList.add(matches?'correct':'incorrect');}b.textContent=(i+1)+'. '+pat.split('').join(' ')+' · '+(pat.includes('?')?'még jelölendő':footName(pat));$('footPreview').append(b)});}
-function render(){const it=item(),a=answer();$('exerciseTitle').textContent=it.title;$('progress').textContent=(current+1)+' / '+items.length;$('instruction').textContent=it.prompt;$('meter').replaceChildren();
+function render(){const it=item(),a=answer();$('exerciseTitle').textContent=it.title;$('progress').textContent=(current+1)+' / '+items.length;$('instruction').textContent=it.prompt;$('specialNote').classList.toggle('hidden',!it.fixed?.length);$('meter').replaceChildren();
  it.syllables.forEach((s,i)=>{
   const group=document.createElement('div');group.className='syllable';
   const mark=document.createElement('button');mark.className='mark';mark.textContent=showSolution?it.marks[i]:(a.marks[i]||'·');
-  if(checked)mark.classList.add(a.marks[i]===it.marks[i]?'correct':'incorrect');
-  mark.setAttribute('aria-label',(i+1)+'. szótag: '+(a.marks[i]||'nincs jelölés'));mark.disabled=showSolution;
+  if(isFixed(it,i))mark.classList.add('fixed');else if(checked)mark.classList.add(a.marks[i]===it.marks[i]?'correct':'incorrect');
+  mark.setAttribute('aria-label',(i+1)+'. szótag: '+(a.marks[i]||'nincs jelölés')+(isFixed(it,i)?', előre megadott':' '));mark.disabled=showSolution||isFixed(it,i);
   mark.onclick=()=>{a.marks[i]=a.marks[i]===''?'∪':a.marks[i]==='∪'?'—':'';checked=false;persist();render()};
-  const part=document.createElement('div');part.className='textpiece';part.textContent=s;group.append(mark,part);
+  const part=document.createElement('div');part.className='textpiece';part.textContent=s;group.append(mark,part);if(isFixed(it,i)){const lab=document.createElement('span');lab.className='fixed-label';lab.textContent='adott';group.append(lab)}
   if(checked&&a.marks[i]!==it.marks[i]){const correction=document.createElement('span');correction.className='correction';correction.textContent='Helyes: '+it.marks[i];group.append(correction)}
   $('meter').append(group);
   if(i<it.syllables.length-1){
@@ -112,7 +117,7 @@ function render(){const it=item(),a=answer();$('exerciseTitle').textContent=it.t
  $('solution').textContent=showSolution?'Vissza a saját jelöléshez':'Megoldás megmutatása';$('prev').disabled=current===0;$('next').disabled=current===items.length-1;
  if(showSolution){$('feedback').classList.remove('hidden');$('feedback').textContent='Megoldókulcs: '+it.marks.join(' ')+' | Verslábhatárok: '+(it.breaks.join(', ')||'nincs')+'. '+it.note;}
  else if(checked){
-  const rights=a.marks.filter((x,i)=>x===it.marks[i]).length,footPoints=boundaryPoints(it,a),total=it.marks.length+it.breaks.length,earned=rights+footPoints;
+  const rights=scoredMarks(it,a.marks),footPoints=boundaryPoints(it,a),total=countableMarks(it)+it.breaks.length,earned=rights+footPoints;
   $('feedback').classList.remove('hidden');$('feedback').replaceChildren();
   const p=document.createElement('p');p.textContent='Mostani megoldás: '+earned+'/'+total+' pont. A rögzített, első ellenőrzés eredménye: '+scoreFor(it,graded[current])+'/'+total+' pont.';p.className=earned===total?'ok':'bad';$('feedback').append(p);
   const desc=document.createElement('p');desc.textContent='A későbbi javítás és a megoldás megtekintése már nem módosítja a Moodle-ba mentett pontot.';$('feedback').append(desc);
